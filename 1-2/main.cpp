@@ -1,9 +1,10 @@
+#include <cassert>
 #include <iostream>
 #include <vector>
 #include <set>
 #include <string>
 
-std::vector<int> pi_function(std::string& string) {
+std::vector<int> PiFunction(std::string& string) {
   std::vector<int> pi(string.size());
   pi[0] = 0;
   for (size_t i = 1; i < string.size(); ++i) {
@@ -19,7 +20,7 @@ std::vector<int> pi_function(std::string& string) {
   return pi;
 }
 
-std::vector<int> z_function(std::string& string) {
+std::vector<int> ZFunction(std::string& string) {
   std::vector<int> z(string.size());
   int left = 0;
   int right = 0;
@@ -34,10 +35,11 @@ std::vector<int> z_function(std::string& string) {
       right = i + z[i];
     }
   }
+  z[0] = string.size();
   return z;
 }
 
-std::vector<int> z_to_pi(std::vector<int>& z) {
+std::vector<int> ZToPi(std::vector<int>& z) {
   std::vector<int> pi(z.size(), 0);
 
   for (int i = 1; i < z.size(); ++i) {
@@ -53,7 +55,7 @@ std::vector<int> z_to_pi(std::vector<int>& z) {
   return pi;
 }
 
-std::vector<int> pi_to_z(std::vector<int>& pi) {
+std::vector<int> PiToZ(std::vector<int>& pi) {
   std::vector<int> z(pi.size());
   for (int i = 1; i < pi.size(); ++i) {
     if (pi[i] > 0) {
@@ -81,6 +83,12 @@ std::vector<int> pi_to_z(std::vector<int>& pi) {
 
 class RecoverFromPiToStr {
  public:
+  std::string operator()(std::vector<int> pi) {
+    pi_ = std::move(pi);
+    Recover();
+    return string_;
+  }
+
   void operator()() {
     Read();
     Recover();
@@ -152,6 +160,12 @@ class RecoverFromPiToStr {
 
 class RecoverFromZToStr {
  public:
+  std::string operator()(std::vector<int> z) {
+    z_ = std::move(z);
+    Recover();
+    return string_;
+  }
+
   void operator()() {
     Read();
     Recover();
@@ -216,7 +230,22 @@ class RecoverFromZToStr {
   }
 };
 
+void TestAll() {
+  std::string test_str("aaaab");
+  std::vector<int> pi_test({0, 1, 2, 3, 0});
+  std::vector<int> z_test({5, 3, 2, 1, 0});
+  RecoverFromZToStr from_z_to_str;
+  assert(from_z_to_str(z_test) == test_str);
+  RecoverFromPiToStr from_pi_to_str;
+  assert(from_pi_to_str(pi_test) == test_str);
+  assert(PiFunction(test_str) == pi_test);
+  assert(ZFunction(test_str) == z_test);
+  assert(PiToZ(pi_test) == z_test);
+  assert(ZToPi(z_test) == pi_test);
+}
 
 int main() {
+  TestAll();
+
   return 0;
 }

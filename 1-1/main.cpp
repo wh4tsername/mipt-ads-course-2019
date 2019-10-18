@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-class Solver {
+class SubstringFinder {
  public:
   void operator()() {
     std::ios::sync_with_stdio(false);
@@ -14,7 +14,7 @@ class Solver {
  private:
   std::string pattern_;
   std::string string_;
-  std::vector<int> z_;
+  std::vector<int> z_function_values_;
 
   void Read() {
     std::cin >> pattern_;
@@ -23,13 +23,14 @@ class Solver {
   }
 
   void FindSubstring() {
-    z_ = std::vector<int>(pattern_.size());
+    z_function_values_ = std::vector<int>(pattern_.size());
     int left = 0;
     int right = 0;
-    z_[0] = 0;
+    z_function_values_[0] = 0;
     for (int i = 1; i < string_.size(); ++i) {
-      int current_z = std::max(0, std::min(right - i, z_[i - left]));
-      
+      int current_z =
+          std::max(0, std::min(right - i, z_function_values_[i - left]));
+
       while (i + current_z < string_.size() &&
              string_[current_z] == string_[i + current_z]) {
         ++current_z;
@@ -38,7 +39,7 @@ class Solver {
         std::cout << i - pattern_.size() - 1 << " ";
       }
       if (i < pattern_.size()) {
-        z_[i] = current_z;
+        z_function_values_[i] = current_z;
       }
       if (i + current_z > right) {
         left = i;
@@ -49,7 +50,7 @@ class Solver {
 };
 
 int main() {
-  Solver solver;
+  SubstringFinder solver;
 
   solver();
 

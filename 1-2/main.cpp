@@ -4,146 +4,128 @@
 #include <set>
 #include <string>
 
-std::vector<int> PiFunction(std::string& string) {
-  std::vector<int> pi(string.size());
-  pi[0] = 0;
+std::vector<int> PiFunction(const std::string& string) {
+  std::vector<int> pi_function_values(string.size());
+  pi_function_values[0] = 0;
   for (size_t i = 1; i < string.size(); ++i) {
-    int border = pi[i - 1];
+    int border = pi_function_values[i - 1];
     while (border > 0 && string[i] != string[border]) {
-      border = pi[border - 1];
+      border = pi_function_values[border - 1];
     }
     if (string[i] == string[border]) {
       ++border;
     }
-    pi[i] = border;
+    pi_function_values[i] = border;
   }
-  return pi;
+  return pi_function_values;
 }
 
-std::vector<int> ZFunction(std::string& string) {
-  std::vector<int> z(string.size());
+std::vector<int> ZFunction(const std::string& string) {
+  std::vector<int> z_function_values(string.size());
   int left = 0;
   int right = 0;
-  z[0] = 0;
+  z_function_values[0] = 0;
   for (int i = 1; i < string.size(); ++i) {
-    z[i] = std::max(0, std::min(right - i, z[i - left]));
-    while (i + z[i] < string.size() && string[z[i]] == string[i + z[i]]) {
-      ++z[i];
+    z_function_values[i] = std::max(0, std::min(right - i, z_function_values[i - left]));
+    while (i + z_function_values[i] < string.size() && string[z_function_values[i]] == string[i + z_function_values[i]]) {
+      ++z_function_values[i];
     }
-    if (i + z[i] > right) {
+    if (i + z_function_values[i] > right) {
       left = i;
-      right = i + z[i];
+      right = i + z_function_values[i];
     }
   }
-  z[0] = string.size();
-  return z;
+  z_function_values[0] = string.size();
+  return z_function_values;
 }
 
-std::vector<int> ZToPi(std::vector<int>& z) {
-  std::vector<int> pi(z.size(), 0);
+std::vector<int> ConvertZToPi(const std::vector<int>& z_function_values) {
+  std::vector<int> pi_function_values(z_function_values.size(), 0);
 
-  for (int i = 1; i < z.size(); ++i) {
-    for (int j = z[i] - 1; j >= 0; --j) {
-      if (pi[i + j] > 0) {
-        break;
-      } else {
-        pi[i + j] = j + 1;
-      }
+  for (int i = 1; i < z_function_values.size(); ++i) {
+    int j = z_function_values[i] - 1;
+    while (j >= 0 && pi_function_values[i + j] <= 0) {
+      pi_function_values[i + j] = j + 1;
+      --j;
     }
   }
 
-  return pi;
+  return pi_function_values;
 }
 
-std::vector<int> PiToZ(std::vector<int>& pi) {
-  std::vector<int> z(pi.size());
-  for (int i = 1; i < pi.size(); ++i) {
-    if (pi[i] > 0) {
-      z[i - pi[i] + 1] = pi[i];
+std::vector<int> ConvertPiToZ(std::vector<int>& pi_function_values) {
+  std::vector<int> z_function_values(pi_function_values.size());
+  for (int i = 1; i < pi_function_values.size(); ++i) {
+    if (pi_function_values[i] > 0) {
+      z_function_values[i - pi_function_values[i] + 1] = pi_function_values[i];
     }
   }
-  z[0] = pi.size();
+  z_function_values[0] = pi_function_values.size();
   int i = 1;
-  while(i < pi.size()) {
-    int t = i;
-    if (z[i] > 0) {
-      for (int j = 1; j < z[i]; ++j) {
-        if (z[i + j] > z[j]) {
+  while(i < pi_function_values.size()) {
+    int new_index = i;
+    if (z_function_values[i] > 0) {
+      for (int j = 1; j < z_function_values[i]; ++j) {
+        if (z_function_values[i + j] > z_function_values[j]) {
           break;
         }
-        z[i + j] = std::min(z[j], z[i] - j);
-        t = i + j;
+        z_function_values[i + j] = std::min(z_function_values[j], z_function_values[i] - j);
+        new_index = i + j;
       }
     }
-    i = t + 1;
+    i = new_index + 1;
   }
 
-  return z;
+  return z_function_values;
 }
 
-class RecoverFromPiToStr {
+class ConvertFromPiToStr {
  public:
-  std::string operator()(std::vector<int> pi) {
-    pi_ = std::move(pi);
-    Recover();
+  std::string operator()(std::vector<int>& pi_function_values) {
+    pi_function_values_ = std::move(pi_function_values);
+    Convert();
     return string_;
   }
 
-  void operator()() {
-    Read();
-    Recover();
-    std::cout << string_;
+  void operator()(std::istream& input_stream, std::ostream& output_stream) {
+    Read(input_stream);
+    Convert();
+    output_stream << string_;
   }
 
  private:
-  std::vector<int> pi_;
+  std::vector<int> pi_function_values_;
   std::string string_;
 
-  void Read() {
+  void Read(std::istream& input_stream) {
     int pi_value = 0;
-    pi_ = std::vector<int>();
-    while (std::cin.peek() != EOF && std::cin.peek() != '\n') {
-      std::cin >> pi_value;
-      pi_.push_back(pi_value);
+    while (input_stream >> pi_value) {
+      pi_function_values_.push_back(pi_value);
     }
   }
 
-  void Preprocess(std::string& string) {
-    pi_ = std::vector<int>(string.size());
-    pi_[0] = 0;
-    for (size_t i = 1; i < string.size(); ++i) {
-      int border = pi_[i - 1];
-      while (border > 0 && string[i] != string[border]) {
-        border = pi_[border - 1];
-      }
-      if (string[i] == string[border]) {
-        ++border;
-      }
-      pi_[i] = border;
-    }
-  }
-  void Recover() {
-    std::set<char> letters;
+  void Convert() {
+    std::set<char> used_letters;
     const char start_symbol = 'a';
-    letters.insert(start_symbol);
+    used_letters.insert(start_symbol);
     string_.push_back(start_symbol);
     size_t shift = 1;
-    for (size_t i = 1; i < pi_.size(); ++i) {
-      if (pi_[i] == pi_[i - 1] + 1) {
-        string_.push_back(string_[pi_[i - 1]]);
-      } else if (pi_[i] != 0) {
-        string_.push_back(string_[pi_[i] - 1]);
+    for (size_t i = 1; i < pi_function_values_.size(); ++i) {
+      if (pi_function_values_[i] == pi_function_values_[i - 1] + 1) {
+        string_.push_back(string_[pi_function_values_[i - 1]]);
+      } else if (pi_function_values_[i] != 0) {
+        string_.push_back(string_[pi_function_values_[i] - 1]);
       } else {
         std::set<char> buffer;
-        int border = pi_[i - 1];
+        int border = pi_function_values_[i - 1];
         buffer.insert(string_[border]);
         while (border > 0 && string_[i] != string_[border]) {
-          border = pi_[border - 1];
+          border = pi_function_values_[border - 1];
           buffer.insert(string_[border]);
         }
-        if (buffer == letters) {
+        if (buffer == used_letters) {
           string_.push_back(start_symbol + shift);
-          letters.insert(start_symbol + shift);
+          used_letters.insert(start_symbol + shift);
           ++shift;
         } else {
           for (size_t j = 0; j < 26; ++j) {
@@ -158,49 +140,50 @@ class RecoverFromPiToStr {
   }
 };
 
-class RecoverFromZToStr {
+class ConvertFromZToStr {
  public:
-  std::string operator()(std::vector<int> z) {
-    z_ = std::move(z);
-    Recover();
+  std::string operator()(std::vector<int>& z_function_values) {
+    z_function_values_ = std::move(z_function_values);
+    Convert();
     return string_;
   }
 
-  void operator()() {
-    Read();
-    Recover();
-    std::cout << string_ << std::endl;
+  void operator()(std::istream& input_stream, std::ostream& output_stream) {
+    Read(input_stream);
+    Convert();
+    output_stream << string_ << std::endl;
   }
 
  private:
-  std::vector<int> z_;
+  std::vector<int> z_function_values_;
   std::string string_;
+  const int ALPHABET_SIZE_ = 26;
 
-  void Read() {
+  void Read(std::istream& input_stream) {
     int z_value = 0;
-    while (std::cin >> z_value) {
-      z_.push_back(z_value);
+    while (input_stream >> z_value) {
+      z_function_values_.push_back(z_value);
     }
   }
 
-  void Recover() {
+  void Convert() {
     const char start_symbol = 'a';
     std::set<int> index_buffer;
     bool is_last_symbol_in_z_block = true;
     string_.push_back(start_symbol);
     int i = 1;
-    while (i < z_.size()) {
-      if (z_[i] != 0) {
+    while (i < z_function_values_.size()) {
+      if (z_function_values_[i] != 0) {
         index_buffer.clear();
-        int prefix_length = z_[i];
+        int prefix_length = z_function_values_[i];
         int prefix_index = 0;
         while (prefix_length > 0) {
-          if (z_[i] > prefix_length) {
-            prefix_length = z_[i];
+          if (z_function_values_[i] > prefix_length) {
+            prefix_length = z_function_values_[i];
             prefix_index = 0;
           }
-          if (z_[i] >= prefix_length) {
-            index_buffer.insert(z_[i]);
+          if (z_function_values_[i] >= prefix_length) {
+            index_buffer.insert(z_function_values_[i]);
           }
           string_.push_back(string_[prefix_index]);
           ++prefix_index;
@@ -214,7 +197,7 @@ class RecoverFromZToStr {
           for(auto&& index : index_buffer) {
             used_symbols.insert(string_[index]);
           }
-          for (size_t shift = 1; shift < 26; ++shift) {
+          for (size_t shift = 1; shift < ALPHABET_SIZE_; ++shift) {
             if (used_symbols.find(start_symbol + shift) == used_symbols.end()) {
               string_.push_back(start_symbol + shift);
               break;
@@ -232,16 +215,16 @@ class RecoverFromZToStr {
 
 void TestAll() {
   std::string test_str("aaaab");
-  std::vector<int> pi_test({0, 1, 2, 3, 0});
-  std::vector<int> z_test({5, 3, 2, 1, 0});
-  RecoverFromZToStr from_z_to_str;
-  assert(from_z_to_str(z_test) == test_str);
-  RecoverFromPiToStr from_pi_to_str;
-  assert(from_pi_to_str(pi_test) == test_str);
+  std::vector<int> pi_test = {0, 1, 2, 3, 0};
+  std::vector<int> z_test = {5, 3, 2, 1, 0};
   assert(PiFunction(test_str) == pi_test);
   assert(ZFunction(test_str) == z_test);
-  assert(PiToZ(pi_test) == z_test);
-  assert(ZToPi(z_test) == pi_test);
+  assert(ConvertPiToZ(pi_test) == z_test);
+  assert(ConvertZToPi(z_test) == pi_test);
+  ConvertFromZToStr from_z_to_str;
+  assert(from_z_to_str(z_test) == test_str);
+  ConvertFromPiToStr from_pi_to_str;
+  assert(from_pi_to_str(pi_test) == test_str);
 }
 
 int main() {

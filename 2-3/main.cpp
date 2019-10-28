@@ -92,12 +92,12 @@ void SuffixTree::InsertLetter(char letter) {
 
         continue;
       }
-      vertex_of_current_suffix = tree_[vertex_of_current_suffix].next_vertices_[letter];
+      vertex_of_current_suffix =
+          tree_[vertex_of_current_suffix].next_vertices_[letter];
       position_on_edge = tree_[vertex_of_current_suffix].left_;
     }
 
-    if (position_on_edge == -1 ||
-        letter == string_[position_on_edge]) {
+    if (position_on_edge == -1 || letter == string_[position_on_edge]) {
       ++position_on_edge;
       break;
     }
@@ -105,8 +105,8 @@ void SuffixTree::InsertLetter(char letter) {
     tree_[position_of_new_vertex_] =
         Vertex(tree_[vertex_of_current_suffix].left_, position_on_edge - 1,
                tree_[vertex_of_current_suffix].parent_);
-    tree_[position_of_new_vertex_]
-        .next_vertices_[string_[position_on_edge]] = vertex_of_current_suffix;
+    tree_[position_of_new_vertex_].next_vertices_[string_[position_on_edge]] =
+        vertex_of_current_suffix;
     tree_[position_of_new_vertex_].next_vertices_[letter] =
         position_of_new_vertex_ + 1;
     tree_[position_of_new_vertex_ + 1].left_ = position_in_string_;
@@ -125,15 +125,13 @@ void SuffixTree::InsertLetter(char letter) {
     position_on_edge = tree_[position_of_new_vertex_ - 2].left_;
 
     while (position_on_edge <= tree_[position_of_new_vertex_ - 2].right_) {
-      vertex_of_current_suffix =
-          tree_[vertex_of_current_suffix]
-              .next_vertices_[string_[position_on_edge]];
+      vertex_of_current_suffix = tree_[vertex_of_current_suffix]
+                                     .next_vertices_[string_[position_on_edge]];
       position_on_edge += tree_[vertex_of_current_suffix].right_ -
-                               tree_[vertex_of_current_suffix].left_ + 1;
+                          tree_[vertex_of_current_suffix].left_ + 1;
     }
 
-    if (position_on_edge ==
-        tree_[position_of_new_vertex_ - 2].right_ + 1) {
+    if (position_on_edge == tree_[position_of_new_vertex_ - 2].right_ + 1) {
       tree_[position_of_new_vertex_ - 2].suf_link_ = vertex_of_current_suffix;
     } else {
       tree_[position_of_new_vertex_ - 2].suf_link_ = position_of_new_vertex_;

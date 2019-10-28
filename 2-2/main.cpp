@@ -27,12 +27,14 @@ class SuffixTree {
   void InsertLetter(char letter);
 
   std::vector<Vertex> tree_;
-  int last_added_vertex_index_ = 2;
+  int position_of_new_vertex_ = 2;
   std::string string_;
   int first_part_size_;
   int position_in_string_ = 0;
-  std::pair<int, int> current_state_;
+  int vertex_of_current_suffix = 0;
+  int position_on_edge = 0;
   std::vector<bool> visited_;
+
   std::vector<int> vertex_numbers;
   int vertex_number = 1;
 };
@@ -55,7 +57,8 @@ SuffixTree::SuffixTree(const std::string& string, int first_part_size) {
     tree_[i].right_ = static_cast<int>(string_.size()) - 1;
   }
 
-  current_state_ = {0, 0};  // suff_vertex and pos_on_edge
+  vertex_of_current_suffix = 0;
+  position_on_edge = 0;
 
   for (auto&& symbol : string_) {
     InsertLetter(symbol);
@@ -65,79 +68,75 @@ SuffixTree::SuffixTree(const std::string& string, int first_part_size) {
 
 void SuffixTree::InsertLetter(char letter) {
   while (true) {
-    if (tree_[current_state_.first].right_ < current_state_.second) {
-      if (tree_[current_state_.first].next_vertices_.find(letter) ==
-          tree_[current_state_.first].next_vertices_.end()) {
-        tree_[current_state_.first].next_vertices_[letter] =
-            last_added_vertex_index_;
-        tree_[last_added_vertex_index_].left_ = position_in_string_;
-        tree_[last_added_vertex_index_].parent_ = current_state_.first;
-        ++last_added_vertex_index_;
+    if (tree_[vertex_of_current_suffix].right_ < position_on_edge) {
+      if (tree_[vertex_of_current_suffix].next_vertices_.find(letter) ==
+          tree_[vertex_of_current_suffix].next_vertices_.end()) {
+        tree_[vertex_of_current_suffix].next_vertices_[letter] =
+            position_of_new_vertex_;
+        tree_[position_of_new_vertex_].left_ = position_in_string_;
+        tree_[position_of_new_vertex_].parent_ = vertex_of_current_suffix;
+        ++position_of_new_vertex_;
 
-        current_state_.first = tree_[current_state_.first].suf_link_;
-        current_state_.second = tree_[current_state_.first].right_ + 1;
+        vertex_of_current_suffix = tree_[vertex_of_current_suffix].suf_link_;
+        position_on_edge = tree_[vertex_of_current_suffix].right_ + 1;
 
         continue;
       }
-      current_state_.first = tree_[current_state_.first].next_vertices_[letter];
-      current_state_.second = tree_[current_state_.first].left_;
+      vertex_of_current_suffix =
+          tree_[vertex_of_current_suffix].next_vertices_[letter];
+      position_on_edge = tree_[vertex_of_current_suffix].left_;
     }
 
-    if (current_state_.second == -1 ||
-        letter == string_[current_state_.second]) {
-      ++current_state_.second;
+    if (position_on_edge == -1 || letter == string_[position_on_edge]) {
+      ++position_on_edge;
       break;
     }
 
-    tree_[last_added_vertex_index_] =
-        Vertex(tree_[current_state_.first].left_, current_state_.second - 1,
-               tree_[current_state_.first].parent_);
-    tree_[last_added_vertex_index_]
-        .next_vertices_[string_[current_state_.second]] = current_state_.first;
-    tree_[last_added_vertex_index_].next_vertices_[letter] =
-        last_added_vertex_index_ + 1;
-    tree_[last_added_vertex_index_ + 1].left_ = position_in_string_;
-    tree_[last_added_vertex_index_ + 1].parent_ = last_added_vertex_index_;
+    tree_[position_of_new_vertex_] =
+        Vertex(tree_[vertex_of_current_suffix].left_, position_on_edge - 1,
+               tree_[vertex_of_current_suffix].parent_);
+    tree_[position_of_new_vertex_].next_vertices_[string_[position_on_edge]] =
+        vertex_of_current_suffix;
+    tree_[position_of_new_vertex_].next_vertices_[letter] =
+        position_of_new_vertex_ + 1;
+    tree_[position_of_new_vertex_ + 1].left_ = position_in_string_;
+    tree_[position_of_new_vertex_ + 1].parent_ = position_of_new_vertex_;
 
-    tree_[current_state_.first].left_ = current_state_.second;
-    tree_[current_state_.first].parent_ = last_added_vertex_index_;
-    tree_[tree_[last_added_vertex_index_].parent_]
-        .next_vertices_[string_[tree_[last_added_vertex_index_].left_]] =
-        last_added_vertex_index_;
+    tree_[vertex_of_current_suffix].left_ = position_on_edge;
+    tree_[vertex_of_current_suffix].parent_ = position_of_new_vertex_;
+    tree_[tree_[position_of_new_vertex_].parent_]
+        .next_vertices_[string_[tree_[position_of_new_vertex_].left_]] =
+        position_of_new_vertex_;
 
-    last_added_vertex_index_ += 2;
+    position_of_new_vertex_ += 2;
 
-    current_state_.first =
-        tree_[tree_[last_added_vertex_index_ - 2].parent_].suf_link_;
-    current_state_.second = tree_[last_added_vertex_index_ - 2].left_;
+    vertex_of_current_suffix =
+        tree_[tree_[position_of_new_vertex_ - 2].parent_].suf_link_;
+    position_on_edge = tree_[position_of_new_vertex_ - 2].left_;
 
-    while (current_state_.second <=
-           tree_[last_added_vertex_index_ - 2].right_) {
-      current_state_.first =
-          tree_[current_state_.first]
-              .next_vertices_[string_[current_state_.second]];
-      current_state_.second += tree_[current_state_.first].right_ -
-                               tree_[current_state_.first].left_ + 1;
+    while (position_on_edge <= tree_[position_of_new_vertex_ - 2].right_) {
+      vertex_of_current_suffix = tree_[vertex_of_current_suffix]
+                                     .next_vertices_[string_[position_on_edge]];
+      position_on_edge += tree_[vertex_of_current_suffix].right_ -
+                          tree_[vertex_of_current_suffix].left_ + 1;
     }
 
-    if (current_state_.second ==
-        tree_[last_added_vertex_index_ - 2].right_ + 1) {
-      tree_[last_added_vertex_index_ - 2].suf_link_ = current_state_.first;
+    if (position_on_edge == tree_[position_of_new_vertex_ - 2].right_ + 1) {
+      tree_[position_of_new_vertex_ - 2].suf_link_ = vertex_of_current_suffix;
     } else {
-      tree_[last_added_vertex_index_ - 2].suf_link_ = last_added_vertex_index_;
+      tree_[position_of_new_vertex_ - 2].suf_link_ = position_of_new_vertex_;
     }
 
-    current_state_.second =
-        tree_[current_state_.first].right_ -
-        (current_state_.second - tree_[last_added_vertex_index_ - 2].right_) +
-        2;
+    position_on_edge =
+        tree_[vertex_of_current_suffix].right_ -
+        (position_on_edge - tree_[position_of_new_vertex_ - 2].right_) + 2;
   }
 }
 
 void SuffixTree::Print() {
-  printf("%d\n", last_added_vertex_index_ - 1);
-  visited_.resize(last_added_vertex_index_);
-  vertex_numbers.resize(last_added_vertex_index_);
+  printf("%d\n", position_of_new_vertex_ - 1);
+  visited_.resize(position_of_new_vertex_);
+  vertex_numbers.resize(position_of_new_vertex_);
   DFS(0);
 }
 

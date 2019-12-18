@@ -1,22 +1,24 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-struct Point {
-  explicit Point(double x = 0, double y = 0, double z = 0, int id = -1)
+struct Vector : std::enable_shared_from_this<Vector> {
+  explicit Vector(double x = 0, double y = 0, double z = 0, int id = -1)
       : x_(x), y_(y), z_(z), id_(id) {}
 
   bool Act() {
-    if (prev_->next_ == this) {
+    std::shared_ptr<Vector> temp(this);
+    if (prev_->next_ == temp) {
       prev_->next_ = next_;
       next_->prev_ = prev_;
       return false;
     }
-    prev_->next_ = this;
-    next_->prev_ = this;
+    prev_->next_ = temp;
+    next_->prev_ = temp;
     return true;
   }
 
@@ -24,11 +26,11 @@ struct Point {
   double y_ = 0;
   double z_ = 0;
   int id_ = -1;
-  Point* prev_ = nullptr;
-  Point* next_ = nullptr;
+  std::shared_ptr<Vector> prev_ = nullptr;
+  std::shared_ptr<Vector> next_ = nullptr;
 };
 
-using Vector = Point;
+using Point = Vector;
 
 void RotateAroundThirdDimension(double& x, double& y, double angle) {
   double new_x = 0;
@@ -64,7 +66,7 @@ class ConvexHull {
  private:
   using Face = std::tuple<size_t, size_t, size_t>;
 
-  static void Permutate(Face& face) {
+  static void Permute(Face& face) {
     size_t first_point = std::get<0>(face);
     size_t second_point = std::get<1>(face);
     size_t third_point = std::get<2>(face);
@@ -76,12 +78,23 @@ class ConvexHull {
   }
 
   void InitializeDownHull(size_t left_size, size_t right_size);
-  std::vector<Point*> DownHull(size_t left_size, size_t right_size);
+  std::vector<std::shared_ptr<Point>> DownHull(size_t left_size,
+                                               size_t right_size);
 
-  static bool IsClockwise(const Point* first_point, const Point* second_point,
-                          const Point* third_point);
-  static double Time(const Point* first_point, const Point* second_point,
-                     const Point* third_point);
+  static bool IsClockwise(const std::shared_ptr<Point>& first_point,
+                          const std::shared_ptr<Point>& second_point,
+                          const std::shared_ptr<Point>& third_point);
+  static double Time(const std::shared_ptr<Point>& first_point,
+                     const std::shared_ptr<Point>& second_point,
+                     const std::shared_ptr<Point>& third_point);
+
+  static void FindSupportingRib(std::shared_ptr<Point>& u,
+                                std::shared_ptr<Point>& v);
+  static void ProcessStates(
+      std::shared_ptr<Point>& u, std::shared_ptr<Point>& v,
+      std::pair<std::vector<std::shared_ptr<Point>>,
+                std::vector<std::shared_ptr<Point>>>& parts_of_hull,
+      std::vector<std::shared_ptr<Point>> part_of_hull);
 
   constexpr static const double INF = 1e9;
   int number_of_vertices_ = 0;
@@ -103,13 +116,13 @@ ConvexHull::ConvexHull(std::vector<Point> points) : points_(std::move(points)) {
 
   InitializeDownHull(0, number_of_vertices_);
   for (auto&& face : hull_) {
-    Permutate(face);
+    Permute(face);
   }
   std::sort(hull_.begin(), hull_.end());
 }
 
 void ConvexHull::InitializeDownHull(size_t left_size, size_t right_size) {
-  std::vector<Point*> events = DownHull(left_size, right_size);
+  std::vector<std::shared_ptr<Point>> events = DownHull(left_size, right_size);
 
   for (auto&& event : events) {
     Face face(event->prev_->id_, event->id_, event->next_->id_);
@@ -121,19 +134,8 @@ void ConvexHull::InitializeDownHull(size_t left_size, size_t right_size) {
   }
 }
 
-std::vector<Point*> ConvexHull::DownHull(size_t left_size, size_t right_size) {
-  if (right_size - left_size == 1) {
-    return std::vector<Point*>();
-  }
-
-  size_t middle = (left_size + right_size) / 2;
-  std::pair<std::vector<Point*>, std::vector<Point*>> parts_of_hull;
-  parts_of_hull.first = DownHull(left_size, middle);
-  parts_of_hull.second = DownHull(middle, right_size);
-
-  std::vector<Point*> part_of_hull;
-  Point* u = &points_[middle - 1];
-  Point* v = &points_[middle];
+void ConvexHull::FindSupportingRib(std::shared_ptr<Point>& u,
+                                   std::shared_ptr<Point>& v) {
   while (true) {
     if (IsClockwise(u, v, v->next_)) {
       v = v->next_;
@@ -143,13 +145,19 @@ std::vector<Point*> ConvexHull::DownHull(size_t left_size, size_t right_size) {
       break;
     }
   }
+}
 
+void ConvexHull::ProcessStates(
+    std::shared_ptr<Point>& u, std::shared_ptr<Point>& v,
+    std::pair<std::vector<std::shared_ptr<Point>>,
+              std::vector<std::shared_ptr<Point>>>& parts_of_hull,
+    std::vector<std::shared_ptr<Point>> part_of_hull) {
   double time = -INF;
   size_t first_part = 0;
   size_t second_part = 0;
   while (true) {
-    Point* left = nullptr;
-    Point* right = nullptr;
+    std::shared_ptr<Point> left = nullptr;
+    std::shared_ptr<Point> right = nullptr;
     std::vector<double> next_time(6, INF);
 
     if (first_part < parts_of_hull.first.size()) {
@@ -213,11 +221,32 @@ std::vector<Point*> ConvexHull::DownHull(size_t left_size, size_t right_size) {
     }
     time = min_time;
   }
+}
+
+std::vector<std::shared_ptr<Point>> ConvexHull::DownHull(size_t left_size,
+                                                         size_t right_size) {
+  if (right_size - left_size == 1) {
+    return std::vector<std::shared_ptr<Point>>();
+  }
+
+  size_t middle = (left_size + right_size) / 2;
+  std::pair<std::vector<std::shared_ptr<Point>>,
+            std::vector<std::shared_ptr<Point>>>
+      parts_of_hull;
+  parts_of_hull.first = DownHull(left_size, middle);
+  parts_of_hull.second = DownHull(middle, right_size);
+
+  std::vector<std::shared_ptr<Point>> part_of_hull;
+  std::shared_ptr<Point> u = std::make_shared<Point>(points_[middle - 1]);
+  std::shared_ptr<Point> v = std::make_shared<Point>(points_[middle]);
+
+  FindSupportingRib(u, v);
+  ProcessStates(u, v, parts_of_hull, part_of_hull);
 
   u->next_ = v;
   v->prev_ = u;
   for (int i = static_cast<int>(part_of_hull.size() - 1); i >= 0; --i) {
-    Point* current = part_of_hull[i];
+    std::shared_ptr<Point> current = part_of_hull[i];
     if (current->x_ > u->x_ && current->x_ < v->x_) {
       u->next_ = current;
       v->prev_ = current;
@@ -242,9 +271,9 @@ std::vector<Point*> ConvexHull::DownHull(size_t left_size, size_t right_size) {
   return part_of_hull;
 }
 
-bool ConvexHull::IsClockwise(const Point* first_point,
-                             const Point* second_point,
-                             const Point* third_point) {
+bool ConvexHull::IsClockwise(const std::shared_ptr<Point>& first_point,
+                             const std::shared_ptr<Point>& second_point,
+                             const std::shared_ptr<Point>& third_point) {
   if (first_point == nullptr || second_point == nullptr ||
       third_point == nullptr) {
     return false;
@@ -254,8 +283,9 @@ bool ConvexHull::IsClockwise(const Point* first_point,
              .z_ < 0;
 }
 
-double ConvexHull::Time(const Point* first_point, const Point* second_point,
-                        const Point* third_point) {
+double ConvexHull::Time(const std::shared_ptr<Point>& first_point,
+                        const std::shared_ptr<Point>& second_point,
+                        const std::shared_ptr<Point>& third_point) {
   if (first_point == nullptr || second_point == nullptr ||
       third_point == nullptr) {
     return INF;

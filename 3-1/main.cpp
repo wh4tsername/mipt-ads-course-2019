@@ -57,7 +57,7 @@ Vector operator*(double constant, const Vector& vector) {
   return result;
 }
 
-double Product(const Vector& first_vector, const Vector& second_vector) {
+double ScalarProduct(const Vector& first_vector, const Vector& second_vector) {
   return first_vector.x_ * second_vector.x_ +
          first_vector.y_ * second_vector.y_ +
          first_vector.z_ * second_vector.z_;
@@ -67,8 +67,8 @@ double FindDistance(const Point& point, const Segment& segment) {
   Vector vector = (-1) * Vector(segment);
   auto p0 = Vector(point);
   auto b = Vector(segment.first_point_);
-  double parameter =
-      (Product(p0, vector) - Product(b, vector)) / (Product(vector, vector));
+  double parameter = (ScalarProduct(p0, vector) - ScalarProduct(b, vector)) /
+                     (ScalarProduct(vector, vector));
   if (parameter <= 1 && parameter >= 0) {
     return (b + parameter * vector - p0).Module();
   }
@@ -87,19 +87,19 @@ double FindDistance(const Segment& first_segment,
 
   Point w0 = first_segment.first_point_ - second_segment.first_point_;
 
-  double a = Product(u, u);
-  double b = Product(u, v);
-  double c = Product(v, v);
-  double d = Product(u, Vector(w0));
-  double e = Product(v, Vector(w0));
+  double a = ScalarProduct(u, u);
+  double b = ScalarProduct(u, v);
+  double c = ScalarProduct(v, v);
+  double d = ScalarProduct(u, Vector(w0));
+  double e = ScalarProduct(v, Vector(w0));
 
   if (a * c != b * b) {
-    double s_c = (b * e - c * d) / (a * c - b * b);
-    double t_c = (a * e - b * d) / (a * c - b * b);
-    if (s_c <= 1 && s_c >= 0 && t_c >= 0 && t_c <= 1) {
-      double x = w0.x_ + s_c * u.x_ - t_c * v.x_;
-      double y = w0.y_ + s_c * u.y_ - t_c * v.y_;
-      double z = w0.z_ + s_c * u.z_ - t_c * v.z_;
+    double s_closest = (b * e - c * d) / (a * c - b * b);
+    double t_closest = (a * e - b * d) / (a * c - b * b);
+    if (s_closest <= 1 && s_closest >= 0 && t_closest >= 0 && t_closest <= 1) {
+      double x = w0.x_ + s_closest * u.x_ - t_closest * v.x_;
+      double y = w0.y_ + s_closest * u.y_ - t_closest * v.y_;
+      double z = w0.z_ + s_closest * u.z_ - t_closest * v.z_;
 
       Vector distance(x, y, z);
 

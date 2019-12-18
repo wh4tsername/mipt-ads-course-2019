@@ -22,7 +22,7 @@ class SuffixTree {
     std::map<char, int> next_vertices_;
   };
 
-  void DFS(int current_vertex);
+  void PrintDescriptionOfVertex(int current_vertex);
 
   void InsertLetter(char letter);
 
@@ -137,10 +137,12 @@ void SuffixTree::Print() {
   printf("%d\n", position_of_new_vertex_ - 1);
   visited_.resize(position_of_new_vertex_);
   vertex_numbers.resize(position_of_new_vertex_);
-  DFS(0);
+  
+  // from the task description we should traverse tree in lexicographical order(DFS)
+  PrintDescriptionOfVertex(0);
 }
 
-void SuffixTree::DFS(int current_vertex) {
+void SuffixTree::PrintDescriptionOfVertex(int current_vertex) {
   visited_[current_vertex] = true;
   if (current_vertex != 0) {
     vertex_numbers[current_vertex] = vertex_number;
@@ -160,7 +162,7 @@ void SuffixTree::DFS(int current_vertex) {
 
   for (auto&& pair : tree_[current_vertex].next_vertices_) {
     if (!visited_[pair.second]) {
-      DFS(pair.second);
+      PrintDescriptionOfVertex(pair.second);
     }
   }
 }

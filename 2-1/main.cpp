@@ -7,97 +7,110 @@ class FindNumberOfSubstrings {
   int operator()(const std::string& input_string);
 
  private:
+  void SplitIntoEquivalenceClasses();
+  void FindLcp();
+
   std::string string_;
+  std::vector<std::vector<size_t>> classes_;
+  std::vector<int> permutation_;
+  int step_ = 0;
+  std::vector<size_t> lcp_;
   const int ALPHABET_SIZE_ = 256;
 };
 
-int FindNumberOfSubstrings::operator()(const std::string& input_string) {
-  string_ = input_string + '$';
+void FindNumberOfSubstrings::FindLcp() {
+  lcp_.assign(string_.size() - 2, 0);
+  for (size_t i = 1; i < string_.size() - 1; ++i) {
+    size_t x = permutation_[i];
+    size_t y = permutation_[i + 1];
+    for (int k = step_ - 1; k >= 0; --k)
+      if (classes_[k][x] == classes_[k][y]) {
+        lcp_[i - 1] += 1 << k;
+        x += 1 << k;
+        y += 1 << k;
+      }
+  }
+}
 
-  std::vector<int> permutation(string_.size());
-  std::vector<int> freq_array(ALPHABET_SIZE_);
-  std::vector<std::vector<size_t>> classes(1,
-                                           std::vector<size_t>(string_.size()));
+void FindNumberOfSubstrings::SplitIntoEquivalenceClasses() {
+  permutation_.assign(string_.size(), 0);
+  std::vector<int> count_array(ALPHABET_SIZE_);
+  classes_.assign(1, std::vector<size_t>(string_.size()));
 
   for (auto&& symbol : string_) {
-    ++freq_array[symbol];
+    ++count_array[symbol];
   }
-  for (int i = 1; i < freq_array.size(); ++i) {
-    freq_array[i] += freq_array[i - 1];
+  for (int i = 1; i < count_array.size(); ++i) {
+    count_array[i] += count_array[i - 1];
   }
   int index = 0;
   for (auto&& symbol : string_) {
-    --freq_array[symbol];
-    permutation[freq_array[symbol]] = index;
+    --count_array[symbol];
+    permutation_[count_array[symbol]] = index;
     ++index;
   }
 
-  classes[0][permutation[0]] = 0;
+  classes_[0][permutation_[0]] = 0;
   int class_index = 1;
   for (int i = 1; i < string_.size(); ++i) {
-    if (string_[permutation[i]] != string_[permutation[i - 1]]) {
+    if (string_[permutation_[i]] != string_[permutation_[i - 1]]) {
       ++class_index;
     }
-    classes[0][permutation[i]] = class_index - 1;
+    classes_[0][permutation_[i]] = class_index - 1;
   }
 
   std::vector<int> new_permutation(string_.size());
-  int step = 0;
-  while ((1 << step) < string_.size()) {
+  while ((1 << step_) < string_.size()) {
     for (size_t i = 0; i < string_.size(); ++i) {
-      new_permutation[i] = permutation[i] - (1 << step);
+      new_permutation[i] = permutation_[i] - (1 << step_);
       if (new_permutation[i] < 0) {
         new_permutation[i] += string_.size();
       }
     }
 
-    freq_array.assign(class_index, 0);
+    count_array.assign(class_index, 0);
     for (size_t i = 0; i < string_.size(); ++i) {
-      ++freq_array[classes[step][new_permutation[i]]];
+      ++count_array[classes_[step_][new_permutation[i]]];
     }
     for (size_t i = 1; i < class_index; ++i) {
-      freq_array[i] += freq_array[i - 1];
+      count_array[i] += count_array[i - 1];
     }
     for (int i = static_cast<int>(string_.size()) - 1; i >= 0; --i) {
-      --freq_array[classes[step][new_permutation[i]]];
-      permutation[freq_array[classes[step][new_permutation[i]]]] =
+      --count_array[classes_[step_][new_permutation[i]]];
+      permutation_[count_array[classes_[step_][new_permutation[i]]]] =
           new_permutation[i];
     }
 
-    classes.emplace_back(string_.size());
-    classes[step + 1][new_permutation[0]] = 0;
+    classes_.emplace_back(string_.size());
+    classes_[step_ + 1][new_permutation[0]] = 0;
     class_index = 1;
     for (size_t i = 1; i < string_.size(); ++i) {
-      size_t mid1 = (permutation[i] + (1 << step)) % string_.size();
-      size_t mid2 = (permutation[i - 1] + (1 << step)) % string_.size();
-      if (classes[step][permutation[i]] != classes[step][permutation[i - 1]] ||
-          classes[step][mid1] != classes[step][mid2]) {
+      size_t mid1 = (permutation_[i] + (1 << step_)) % string_.size();
+      size_t mid2 = (permutation_[i - 1] + (1 << step_)) % string_.size();
+      if (classes_[step_][permutation_[i]] !=
+              classes_[step_][permutation_[i - 1]] ||
+          classes_[step_][mid1] != classes_[step_][mid2]) {
         ++class_index;
       }
-      classes[step + 1][permutation[i]] = class_index - 1;
+      classes_[step_ + 1][permutation_[i]] = class_index - 1;
     }
 
-    ++step;
+    ++step_;
   }
+}
 
-  std::vector<size_t> lcp(string_.size() - 2, 0);
-  for (size_t i = 1; i < string_.size() - 1; ++i) {
-    size_t x = permutation[i];
-    size_t y = permutation[i + 1];
-    for (int k = step - 1; k >= 0; --k)
-      if (classes[k][x] == classes[k][y]) {
-        lcp[i - 1] += 1 << k;
-        x += 1 << k;
-        y += 1 << k;
-      }
-  }
+int FindNumberOfSubstrings::operator()(const std::string& input_string) {
+  string_ = input_string + '$';
+
+  SplitIntoEquivalenceClasses();
+  FindLcp();
 
   size_t number_of_subtrings = 0;
   for (int i = 1; i < string_.size(); ++i) {
-    number_of_subtrings += (string_.size() - 1) - permutation[i];
+    number_of_subtrings += (string_.size() - 1) - permutation_[i];
   }
   for (int i = 0; i < string_.size() - 2; ++i) {
-    number_of_subtrings -= lcp[i];
+    number_of_subtrings -= lcp_[i];
   }
 
   return number_of_subtrings;

@@ -1,9 +1,14 @@
 #pragma once
 
-#include <iomanip>
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
+
+template <typename T>
+T Min(const T& lhs, const T& rhs) {
+  return lhs < rhs ? lhs : rhs;
+}
 
 int Power(int value, int power) {
   int result = 1;
@@ -22,8 +27,8 @@ int Power(int value, int power) {
 
 class BigInteger {
  public:
-  typedef uint16_t base_t;
-  typedef uint32_t ext_base_t;
+  typedef uint32_t base_t;
+  typedef uint64_t ext_base_t;
 
   BigInteger(const BigInteger& other);
   BigInteger(BigInteger&& other) noexcept;
@@ -71,11 +76,13 @@ class BigInteger {
 
   friend std::ostream& operator<<(std::ostream& os, const BigInteger& value);
   friend std::istream& operator>>(std::istream& is, BigInteger& value);
+  friend BigInteger operator<<(const BigInteger& big_integer, int N);
+  friend BigInteger operator>>(const BigInteger& big_integer, int N);
 
   std::string toString() const;
 
  private:
-  static const base_t BASE = 10;
+  static const base_t BASE = 1000;
 
   std::vector<base_t> buffer_;
   bool is_negative_;
@@ -412,29 +419,64 @@ BigInteger BigInteger::operator--(int) {
   return *this + 1;
 }
 
+BigInteger operator>>(const BigInteger& big_integer, int N) {
+  int new_size = static_cast<int>(big_integer.buffer_.size()) - N;
+  if (new_size <= 0) {
+    return 0;
+  }
+
+  BigInteger result;
+  result.buffer_.clear();
+  for (int i = 0; i < new_size; ++i) {
+    result.buffer_.emplace_back(big_integer.buffer_[N + i]);
+  }
+
+  return result;
+}
+
+BigInteger operator<<(const BigInteger& big_integer, int N) {
+  if (big_integer.buffer_.size() == 1 && big_integer.buffer_[0] == 0) {
+    return 0;
+  }
+
+  BigInteger result;
+  result.buffer_.clear();
+  for (int i = 0; i < N; ++i) {
+    result.buffer_.emplace_back(0);
+  }
+  for (unsigned short digit : big_integer.buffer_) {
+    result.buffer_.emplace_back(digit);
+  }
+
+  return result;
+}
+
 BigInteger BigInteger::MultiplyPositives(const BigInteger& lhs,
                                          const BigInteger& rhs) {
   BigInteger result;
 
-  result.FillBufferWithZeros(lhs.buffer_.size() + rhs.buffer_.size());
-
-  const BigInteger& lhs_less = (abs(lhs) > abs(rhs)) ? abs(rhs) : abs(lhs);
-  const BigInteger& rhs_greater = (abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs);
-
-  for (size_t i = 0; i < lhs_less.buffer_.size(); ++i) {
-    ext_base_t transfer = 0;
-    for (size_t j = 0; j < rhs_greater.buffer_.size() || transfer != 0; ++j) {
-      ext_base_t current_composition =
-          result[i + j] + lhs_less[i] * rhs_greater[j] + transfer;
-      result.At(i + j) =
-          static_cast<base_t>(current_composition % BigInteger::BASE);
-      transfer = static_cast<base_t>(current_composition / BigInteger::BASE);
-    }
+  if (lhs.buffer_.size() == 1 && lhs.buffer_[0] == 0) {
+    return 0;
   }
 
-  BigInteger::DeleteLeadingZeros(result);
+  if (lhs.buffer_.size() == 1 && rhs.buffer_.size() == 1) {
+    return lhs.buffer_[0] * rhs.buffer_[0];
+  }
 
-  return result;
+  int min_size = static_cast<ext_base_t>(Min(lhs.Size(), rhs.Size()));
+  int half_size = (min_size + 1) / 2;
+
+  auto high1 = lhs >> half_size;
+  auto low1 = lhs - (high1 << half_size);
+
+  auto high2 = rhs >> half_size;
+  auto low2 = rhs - (high2 << half_size);
+
+  const auto z0 = low1 * low2;
+  const auto z1 = (low1 + high1) * (low2 + high2);
+  const auto z2 = high1 * high2;
+
+  return (z2 << (half_size * 2)) + ((z1 - z2 - z0) << half_size) + z0;
 }
 
 BigInteger operator*(const BigInteger& lhs, const BigInteger& rhs) {
@@ -588,6 +630,7 @@ std::string BigInteger::NumberToString(IntegerType number) {
 
     number /= 10;
   }
+  std::reverse(number_string.begin(), number_string.end());
 
   return number_string;
 }
@@ -625,11 +668,29 @@ std::string BigInteger::toString() const {
   return result;
 }
 
- std::ostream& operator<<(std::ostream& os, const BigInteger& value) {
+std::ostream& operator<<(std::ostream& os, const BigInteger& value) {
   os << value.toString();
 
   return os;
 }
+
+//std::ostream& operator<<(std::ostream& os, const BigInteger& value) {
+//  size_t size = value.Size();
+//  const size_t SEGMENT_LENGTH =
+//      BigInteger::NumberLength(BigInteger::BASE) - 1;
+//  if (value.IsNegative()) {
+//    os << '-';
+//  }
+//
+//  os << value.At(size - 1);
+//
+//  for (size_t i = size - 1; i >= 1; --i) {
+//    os << std::setfill('0') << std::setw(static_cast<int>(SEGMENT_LENGTH));
+//    os << value.At(i - 1);
+//  }
+//
+//  return os;
+//}
 
 std::istream& operator>>(std::istream& is, BigInteger& value) {
   std::string input;
